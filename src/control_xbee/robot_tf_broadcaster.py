@@ -21,12 +21,13 @@ class robot_tf_broadcaster:
 
         rospy.init_node('robot_tf_broadcaster', anonymous=True)
         self.odom_broadcaster = tf.TransformBroadcaster()
+
         # Broadcasters for each of the IR sensors
         self.cam_static_broadcaster1 = tf.TransformBroadcaster()
         self.cam_static_broadcaster2 = tf.TransformBroadcaster()
         self.cam_static_broadcaster3 = tf.TransformBroadcaster()
 
-        self.rate = rospy.Rate(10)
+        self.rate = rospy.Rate(10) # 10 Hz
         while not rospy.is_shutdown():
             self.tf_pub()
             self.rate.sleep()
@@ -42,6 +43,7 @@ class robot_tf_broadcaster:
             "odom"
         )
 
+        # IR Sensor 1
         self.cam_static_broadcaster1.sendTransform(
             (-0.1, 0.0, 0.0),
             tf.transformations.quaternion_from_euler(.0, (math.radians(90)), 0.0),
@@ -50,6 +52,7 @@ class robot_tf_broadcaster:
             "base_link"
         )
 
+        # IR Sensor 2
         self.cam_static_broadcaster2.sendTransform(
             (0.0, 0.1, 0.0),
             tf.transformations.quaternion_from_euler(.0, (math.radians(90)), (math.radians(90))),
@@ -58,6 +61,7 @@ class robot_tf_broadcaster:
             "base_link"
         )
 
+        # IR Sensor 3
         self.cam_static_broadcaster3.sendTransform(
             (0.1, -0.1, 0.0),
             tf.transformations.quaternion_from_euler(.0, (math.radians(90)), (math.radians(-90))),

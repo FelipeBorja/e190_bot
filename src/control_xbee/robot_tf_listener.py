@@ -44,6 +44,7 @@ class robot_tf_listener:
         self.goalPose.pose.position.z = .0
         
         # quat = quaternion_from_euler(.0, .0, .0)
+        # Hardcode in angle in quaternion (0,0,1,0)
         self.goalPose.pose.orientation.x = 0
         self.goalPose.pose.orientation.y = 0
         self.goalPose.pose.orientation.z = 1
@@ -51,8 +52,6 @@ class robot_tf_listener:
 
 
     def tf_lis(self):
-        #Shall we put "odom" first or "base_link" first? Experiment it! 
-        #The example may be wrong!
         self.listener.waitForTransform("odom","base_link",rospy.Time(0),rospy.Duration(2.0))
         (trans,rot) = self.listener.lookupTransform("odom", "base_link", rospy.Time(0))
         
