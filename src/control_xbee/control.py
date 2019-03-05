@@ -107,11 +107,12 @@ class botControl:
             print(RPWM)
             print(LPWM)
 
-            RDIR = int(RPWM > 0)
-            LDIR = int(LPWM > 0)
+            # Invert direction so +x is forward
+            RDIR = int(RPWM < 0)
+            LDIR = int(LPWM < 0)
 
             RPWM = abs(RPWM)
-            LPWM = abs(LPWM) 
+            LPWM = abs(LPWM)
 
             # Combine command and send to terminal and robot
             command = '$M ' + str(LDIR) + ' ' + str(LPWM) + ' ' + str(RDIR) + ' ' + str(RPWM) + '@'

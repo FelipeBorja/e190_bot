@@ -18,8 +18,8 @@ alpha = 0.0
 beta = 0.0
 
 # Goal x and y, hardcoded for now
-goal_x = 1.0
-goal_y = 1.0
+init_goal_x = 1.0
+init_goal_y = 1.0
 
 def odom_callback(data):
     rospy.loginfo(rospy.get_caller_id() + 'I heard %s', data.pose)
@@ -51,8 +51,16 @@ def odom_callback(data):
     # This will publish the velocity & angular information each time! 
     pub.publish(standardMessage)
 
+def goal_callback(data):
+    # Get values from goal_pose
+    goal_x = data.pose.pose.position.x
+    goal_y = data.pose.pose.position.y
+    quat = data.pose.pose.orientation
+    theta = euler_from_quaternion([quat.x,quat.y,quat.z, quat.w])
+
 def point_tracking():
     rospy.Subscriber('/odom', Odometry, odom_callback)
+    rospy.Subscriber('/goal_pose', Pose, goal_callback)
     pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
     rospy.init_node('point_tracking', anonymous = True)
 

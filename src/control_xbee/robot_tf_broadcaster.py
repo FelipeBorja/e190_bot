@@ -26,7 +26,7 @@ class robot_tf_broadcaster:
         self.cam_static_broadcaster2 = tf.TransformBroadcaster()
         self.cam_static_broadcaster3 = tf.TransformBroadcaster()
 
-        self.rate = rospy.Rate(2)
+        self.rate = rospy.Rate(10)
         while not rospy.is_shutdown():
             self.tf_pub()
             self.rate.sleep()
