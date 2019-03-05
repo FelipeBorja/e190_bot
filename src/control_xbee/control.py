@@ -59,7 +59,7 @@ class botControl:
         
         self.pubOdom = rospy.Publisher('/odom', Odometry, queue_size=10)
 
-        # Publish ir (distance) sensor stuff
+        # Publish ir (distance) sensor data
         # self.pubDistL = rospy.Publisher('/distL', ir_sensor, queue_size=10)
         # self.pubDistC = rospy.Publisher('/distC', ir_sensor, queue_size=10)
         # self.pubDistR = rospy.Publisher('/distR', ir_sensor, queue_size=10)
@@ -68,7 +68,12 @@ class botControl:
         self.time = rospy.Time.now()
         self.count = 0
 
-        self.rate = rospy.Rate(2)
+        # Sets publishing rate
+        self.rate = rospy.Rate(10) # 10hz
+        self.xbeeTimeout = .01 # set an xbee timeout such that we only skip one
+                               # or two odom pubs
+        # self.rate = rospy.Rate(5) # 5hz
+
         while not rospy.is_shutdown():
             self.odom_pub()
             self.rate.sleep()
@@ -126,9 +131,10 @@ class botControl:
             command = '$S @'
             self.xbee.tx(dest_addr = self.address, data = command)
             try:
-                update = self.xbee.wait_read_frame()
+                update = self.xbee.wait_read_frame(self.xbeeTimeout)
             except:
-                pass
+                print("Lost connection to odom over xbee.\nRetrying")
+                return False
 
             data = update['rf_data'].decode().split(' ')[:-1]
             data = [int(x) for x in data]
@@ -176,7 +182,6 @@ class botControl:
             self.Odom.pose.pose.orientation.w = quat[3]
             
 
-            # #https://wiki.ros.org/tf/Tutorials/Writing%20a%20tf%20broadcaster%20%28Python%29
             self.odom_broadcaster.sendTransform(
                 (self.Odom.pose.pose.position.x, self.Odom.pose.pose.position.y, .0),
                 tf.transformations.quaternion_from_euler(.0, .0, self.theta),
@@ -233,7 +238,7 @@ class botControl:
         # edit this line to have data logging of the data you care about
         data = [str(x) for x in [1,2,3,self.Odom.pose.pose.position.x,self.Odom.pose.pose.position.y]]
         
-        f.write(' '.join(data) + '\n')#maybe you don't want to log raw data??
+        f.write(' '.join(data) + '\n') # maybe you don't want to log raw data??
         f.close()
 
 if __name__ == '__main__':
