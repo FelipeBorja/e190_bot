@@ -1,0 +1,10 @@
+<launch>
+  <!-- Make nodes for control.py, goal.py -->
+  <node pkg="e190_bot" name="control" type="control.py"/>
+  <node pkg="e190_bot" name="goal" type="goal.py"/>
+
+  <!-- Make node for point_tracking.py -->
+  <node pkg="e190_bot" name="point_tracking" type="point_tracking.py" output="screen"/>
+
+
+</launch>
