@@ -20,7 +20,7 @@ def goal_callback(point):
     global goal_x, goal_y
     goal_x = point.pose.position.x
     goal_y = point.pose.position.y
-    print("goal x" + str(goal_x))
+    #print("goal x" + str(goal_x))
     
 
 def point_tracking():
