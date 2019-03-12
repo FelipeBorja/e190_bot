@@ -13,6 +13,6 @@
 
 		<param name="autofocus" value="false"/>
 		<param name="focus" value="51"/>
-		<!--param name="camera_info_url" value="file://$(find e190_bot)/params/camera_info/camera_info.yaml"/-->
+		<param name="camera_info_url" value="file://$(find e190_bot)/params/camera_info/camera_info.yaml"/>
 	</node>
 </launch>
