@@ -24,6 +24,7 @@
     <remap from="/camera_info" to="$(arg camera)/camera_info"/>
   </node>
 
+  <node pkg="e190_bot" name="control_py" type="control.py"/>
   <!-- Make node for robot_steering.py -->
   <node pkg="e190_bot" name="robot_steering" type="robot_steering.py" output="screen"/>
 
