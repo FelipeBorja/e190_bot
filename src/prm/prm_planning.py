@@ -1,4 +1,4 @@
-s#!/usr/bin/env python
+#!/usr/bin/env python
 import rospy
 import rospkg
 import random
@@ -6,9 +6,9 @@ import random
 import tf
 import math
 
-from road_map_node import PRM_Node 
+from road_map_node import PRM_Node
 
-from geometry_msgs.msg import PoseStamped, Point
+from geometry_msgs.msg import PoseStamped, Point, Pose
 from geometry_msgs.msg import Quaternion
 from nav_msgs.msg import Odometry
 from nav_msgs.msg import Path
@@ -35,13 +35,22 @@ class prm_planning:
         self.endzone_radius = 0.5
         self.node_dist = .1
 
+        # default start values
+        self.start_x = 0
+        self.start_y = 0
+        self.goal_x = 0
+        self.goal_y = 0
+
+        print('init...')
+        
         self.path_init()
         self.map_init()# call map_server using service, other methods possible
+
+
 
         self.start_i = 0
         self.start_j = 0
         self.start_id = 0 #not important most of time
-
 
         self.goal_i = 0
         self.goal_j = 0
@@ -59,6 +68,7 @@ class prm_planning:
 
         self.rate = rospy.Rate(2)
         while not rospy.is_shutdown():
+            print('running prm...')
             self.rate.sleep()
 
 
@@ -126,11 +136,11 @@ class prm_planning:
 
 # helpers for path_plan
     def neighbor_coords(self, startx, starty):
-        theta = random.random(0,2*math.pi)
-        r = random.random(0,self.node_dist)
+        theta = random.uniform(0,2*math.pi)
+        r = random.uniform(0,self.node_dist)
         dx = r*math.cos(theta)
         dy = r*math.sin(theta)
-            return (startx+dx, starty+dy)
+        return (startx+dx, starty+dy)
             
     def in_endzone(self, xy_tuple):
         (x,y) = xy_tuple
@@ -172,7 +182,7 @@ class prm_planning:
         for counter in range(1,N):
             # choose a random node
             expander_node = self.roadmap[random.randint(0,len(self.roadmap)-1)]
-            expanded_coords = neighbor_coords(expander_node.x,expander_node.y, self.node_dist)
+            expanded_coords = self.neighbor_coords(expander_node.x,expander_node.y)
             if not self.collisionDetect(expander_node.x, expander_node.y, expanded_coords[0], expanded_coords[1]):
                 my_new_node = PRM_Node(x=expanded_coords[0],y=expanded_coords[1],parent=expander_node,index=counter)
                 self.roadmap.append(my_new_node)
@@ -180,21 +190,20 @@ class prm_planning:
                     path_found = True
                     break
         
-        def node_to_point(node):
-            point_conversion = Point()
-            point_conversion.x = node.x 
-            point_conversion.y = node.y 
-            point_conversion.z = 0.0 
-            return point_conversion
+        def node_to_posestamped(node):
+            pose = PoseStamped()
+            pose.pose.position.x = node.x
+            pose.pose.position.y = node.y 
+            return pose
         
         cur_node = self.roadmap[-1]
         while cur_node != self.start_node:
-            self.prm_plan.poses.append(node_to_point(cur_node))
+            self.prm_plan.poses.append(node_to_posestamped(cur_node))
             cur_node = cur_node.parent
-        self.prm_plan.poses.append(node_to_point(cur_node))
+        self.prm_plan.poses.append(node_to_posestamped(cur_node))
         self.prm_plan.poses.reverse()
         
-        self.pubPlan(self.prm_plan)
+        self.pubPlan.publish(self.prm_plan)
         
         #self.start_node.addChild(my_new_node)
         #my_new_node.addChild(self.goal_node)
@@ -203,8 +212,8 @@ class prm_planning:
 
     #convert position in meter to map grid id, return grid_x, grid_y and their 1d grid_id
     def pos_to_grid(self,poseX,poseY):
-        grid_i = int(round((poseX - self.map.info.origin.position.x) / self.map_res));
-        grid_j = int(round((poseY - self.map.info.origin.position.y) / self.map_res));
+        grid_i = int(round((poseX - self.map.info.origin.position.x) / self.map_res))
+        grid_j = int(round((poseY - self.map.info.origin.position.y) / self.map_res))
 
         grid_id = grid_j * self.map_width + grid_i
 
