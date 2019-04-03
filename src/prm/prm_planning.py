@@ -8,7 +8,7 @@ import math
 
 from road_map_node import PRM_Node 
 
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Point
 from geometry_msgs.msg import Quaternion
 from nav_msgs.msg import Odometry
 from nav_msgs.msg import Path
@@ -31,7 +31,9 @@ class prm_planning:
 
         self.pubPlan = rospy.Publisher('/plan', Path, queue_size=10)
         
-        self.endzone_radius = 3
+        # tunables
+        self.endzone_radius = 0.5
+        self.node_dist = .1
 
         self.path_init()
         self.map_init()# call map_server using service, other methods possible
@@ -66,6 +68,15 @@ class prm_planning:
         self.start_node = PRM_Node()
         self.roadmap = [self.start_node]
         self.goal_node = PRM_Node()
+        
+        # Here is a hint that how you deal "topological" prm_node
+        self.start_node.x = self.start_x
+        self.start_node.y = self.start_y
+        self.start_node.index = 0
+
+        self.goal_node.x = self.goal_x
+        self.goal_node.y = self.goal_y
+        # index of goal remains undefined... whatever
 
     def map_init(self):
         rospy.wait_for_service('static_map')
@@ -113,7 +124,20 @@ class prm_planning:
         self.current_o.z = quat[2]
         self.current_o.w = quat[3]
 
-
+# helpers for path_plan
+    def neighbor_coords(self, startx, starty):
+        theta = random.random(0,2*math.pi)
+        r = random.random(0,self.node_dist)
+        dx = r*math.cos(theta)
+        dy = r*math.sin(theta)
+            return (startx+dx, starty+dy)
+            
+    def in_endzone(self, xy_tuple):
+        (x,y) = xy_tuple
+        dx = self.goal_x - x
+        dy = self.goal_y - y
+        return math.sqrt(dx**2 + dy**2) < self.endzone_radius
+        
     def plan_path(self):
         # Core function! modify as you wish! Here is only a demo that yield definitely wrong thing
         # Here is an example how do you deal with ROS nav_msgs/Path
@@ -142,35 +166,13 @@ class prm_planning:
         collided = self.collisionDetect(self.start_x,self.start_y,self.goal_x,self.goal_y)
         print("Is collision free? " + str(collided))
 
-        # Here is a hint that how you deal "topological" prm_node
-        self.start_node.x = self.start_x
-        self.start_node.y = self.start_y
-        self.start_node.index = 0
-
-        self.goal_node.x = self.goal_x
-        self.goal_node.y = self.goal_y
-        self.goal_node.index = 1
-
         N = 1000
-        
-        def neighbor_coords(startx, starty):
-            theta = random.random(0,2*math.pi)
-            r = random.random(0,1)
-            dx = r*math.cos(theta)
-            dy = r*math.sin(theta)
-            return (startx+dx, starty+dy)
-            
-        def in_endzone(xy_tuple):
-            (x,y) = xy_tuple
-            dx = self.goal_x - x
-            dy = self.goal_y - y
-            return math.sqrt(dx**2 + dy**2) < self.endzone_radius
             
         path_found = False
         for counter in range(1,N):
             # choose a random node
             expander_node = self.roadmap[random.randint(0,len(self.roadmap)-1)]
-            expanded_coords = neighbor_coords(expander_node.x,expander_node.y)
+            expanded_coords = neighbor_coords(expander_node.x,expander_node.y, self.node_dist)
             if not self.collisionDetect(expander_node.x, expander_node.y, expanded_coords[0], expanded_coords[1]):
                 my_new_node = PRM_Node(x=expanded_coords[0],y=expanded_coords[1],parent=expander_node,index=counter)
                 self.roadmap.append(my_new_node)
@@ -178,10 +180,26 @@ class prm_planning:
                     path_found = True
                     break
         
-        self.start_node.addChild(my_new_node)
-        my_new_node.addChild(self.goal_node)
+        def node_to_point(node):
+            point_conversion = Point()
+            point_conversion.x = node.x 
+            point_conversion.y = node.y 
+            point_conversion.z = 0.0 
+            return point_conversion
+        
+        cur_node = self.roadmap[-1]
+        while cur_node != self.start_node:
+            self.prm_plan.poses.append(node_to_point(cur_node))
+            cur_node = cur_node.parent
+        self.prm_plan.poses.append(node_to_point(cur_node))
+        self.prm_plan.poses.reverse()
+        
+        self.pubPlan(self.prm_plan)
+        
+        #self.start_node.addChild(my_new_node)
+        #my_new_node.addChild(self.goal_node)
 
-        print("The last node's index is: " + str(my_new_node.index))
+        #print("The last node's index is: " + str(my_new_node.index))
 
     #convert position in meter to map grid id, return grid_x, grid_y and their 1d grid_id
     def pos_to_grid(self,poseX,poseY):
@@ -209,28 +227,64 @@ class prm_planning:
 
         return True
 
-# bresenham alg for line generation, adapted from https://www.geeksforgeeks.org/bresenhams-line-generation-algorithm/  
-def bresenham(x1,y1,x2,y2):
-    line=[]
+# bresenham algorithm for line generation, from http://www.roguebasin.com/index.php?title=Bresenham%27s_Line_Algorithm
+def bresenham(x1, y1, x2, y2):
+    """Bresenham's Line Algorithm
+    Produces a list of tuples from start and end
 
-    m_new = 2 * (y2 - y1)  
-    slope_error_new = m_new - (x2 - x1) 
+    >>> points1 = get_line((0, 0), (3, 4))
+    >>> points2 = get_line((3, 4), (0, 0))
+    >>> assert(set(points1) == set(points2))
+    >>> print points1
+    [(0, 0), (1, 1), (1, 2), (2, 3), (3, 4)]
+    >>> print points2
+    [(3, 4), (2, 3), (1, 2), (1, 1), (0, 0)]
+    """
+    # Setup initial conditions
 
-    y=y1
+    dx = x2 - x1
+    dy = y2 - y1
 
-    for x in range(x1,x2+1):
-        line.append([x,y])
-        #print("(",x ,",",y ,")\n")  
-        # Add slope to increment angle formed  
-        slope_error_new =slope_error_new + m_new  
+    # Determine how steep the line is
+    is_steep = abs(dy) > abs(dx)
 
-        # Slope error reached limit, time to  
-        # increment y and update slope error.  
-        if (slope_error_new >= 0):  
-            y=y+1
-            slope_error_new =slope_error_new - 2 * (x2 - x1)
+    # Rotate line
+    if is_steep:
+        x1, y1 = y1, x1
+        x2, y2 = y2, x2
 
-    return line
+    # Swap start and end points if necessary and store swap state
+    swapped = False
+    if x1 > x2:
+        x1, x2 = x2, x1
+        y1, y2 = y2, y1
+        swapped = True
+
+    # Recalculate differentials
+    dx = x2 - x1
+    dy = y2 - y1
+
+    # Calculate error
+    error = int(dx / 2.0)
+    ystep = 1 if y1 < y2 else -1
+
+    # Iterate over bounding box generating points between start and end
+    y = y1
+    points = []
+    for x in range(x1, x2 + 1):
+        coord = (y, x) if is_steep else (x, y)
+        points.append(coord)
+        error -= abs(dy)
+        if error < 0:
+            y += ystep
+            error += dx
+
+    # Reverse the list if the coordinates were swapped
+    if swapped:
+        points.reverse()
+
+    # print points
+    return points
 
 
 if __name__ == '__main__':
