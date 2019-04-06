@@ -5,12 +5,13 @@
   <!-- Right now code is modified to rely on ROS service -->
   <!-- <node pkg="e190_bot" name="goal" type="goal.py"/> -->
 
+  <!-- k-value parameters for point_tracking node -->
+  <param name="kp" value="2.0"/>
+  <param name="ka" value="3.0"/>
+  <param name="kb" value="-0.5"/>
+
   <!-- Make node for point_tracking.py -->
-  <node pkg="e190_bot" name="point_tracking" type="point_tracking.py" output="screen" >
-    <param name="kp" value="1.0"/>
-    <param name="ka" value="2.0"/>
-    <param name="kb" value="-0.7"/>
-  </node>
+  <node pkg="e190_bot" name="point_tracking" type="point_tracking.py" output="screen"/>
 
 
 </launch>
