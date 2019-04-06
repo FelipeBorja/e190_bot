@@ -86,7 +86,6 @@ def point_tracking():
             print("throw")
             pass
 
-
 if __name__ == '__main__':
     try:
         point_tracking()
