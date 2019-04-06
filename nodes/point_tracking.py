@@ -4,31 +4,39 @@ import numpy as np
 import math
 import tf
 
-from geometry_msgs.msg import Twist, Vector3, PoseStamped, Point
+from geometry_msgs.msg import Twist, Vector3, PoseStamped
 from nav_msgs.msg import Odometry, Path
-
-# Initiate k-values according to stability rules
-# Old values that worked: (1.0, 2.0, -0.7)
-kp = 1.0
-ka = 2.0
-kb = -0.7
 
 goal_x = .0 
 goal_y = .0 
+
+bool goal_reached = False
 
 def goal_callback(point):
     global goal_x, goal_y
     goal_x = point.pose.position.x
     goal_y = point.pose.position.y
     #print("goal x" + str(goal_x))
-    
 
+def handle_point_tracking(req):
+    global goal_x, goal_y
+    goal_x = req.position.x
+    goal_y = req.position.y
+    return goal_reached
+    
 def point_tracking():
-    global kp, ka, kb, goal_x, goal_y
+    global goal_x, goal_y
     print("point_tracking begins")
+
+    # Get k-values from launch file
+    kp = rospy.get_param('kp', 1.0)
+    ka = rospy.get_param('ka', 2.0)
+    kb = rospy.get_param('kb', -0.7)
+
     pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
-    rospy.Subscriber('/goal', PoseStamped, goal_callback)
+    rospy.Subscriber('/goal', PoseStamped, goal_callback)  # not needed since we are using rosservice now
     rospy.init_node('point_tracking', anonymous = True)
+    rospy.Service('point_tracking', point_tracking, handle_point_tracking)
     listener = tf.TransformListener()
 
     rate = rospy.Rate(10.0) # 10 Hz
@@ -64,6 +72,7 @@ def point_tracking():
             # Stopping the robot
             if(rho < 0.2):
                 print("STOP")
+                goal_reached = True
                 linear = 0.0
                 angular = 0.0
 
