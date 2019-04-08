@@ -26,14 +26,14 @@ class prm_planning:
 
         # subscribe to /goal topic, you can use "2D Nav Goal" tab on RViz to set a goal by mouse
         # config 2D Nav Goal using panels->tool properties
-        rospy.Subscriber("/goal", PoseStamped, self.goal_callback)
+        rospy.Subscriber("/Haha_you_found_Goal", PoseStamped, self.goal_callback)
         rospy.Subscriber("/odom", Odometry, self.odom_callback)
 
         self.pubPlan = rospy.Publisher('/plan', Path, queue_size=10)
         
         # tunables
-        self.endzone_radius = 0.5
-        self.node_dist = .1
+        self.endzone_radius = 0.2
+        self.node_dist = .5
 
         # default start values
         self.start_x = 0
@@ -43,7 +43,6 @@ class prm_planning:
 
         print('init...')
         
-        self.path_init()
         self.map_init()# call map_server using service, other methods possible
 
 
@@ -68,7 +67,6 @@ class prm_planning:
 
         self.rate = rospy.Rate(2)
         while not rospy.is_shutdown():
-            print('running prm...')
             self.rate.sleep()
 
 
@@ -118,6 +116,7 @@ class prm_planning:
 
         self.plan_path()
 
+        print("Publishing plan of length " + str(len(self.prm_plan.poses))+".")
         self.pubPlan.publish(self.prm_plan) #plan is published here!
 
     def odom_callback(self,Odom):
@@ -149,6 +148,8 @@ class prm_planning:
         return math.sqrt(dx**2 + dy**2) < self.endzone_radius
         
     def plan_path(self):
+        self.path_init()
+        
         # Core function! modify as you wish! Here is only a demo that yield definitely wrong thing
         # Here is an example how do you deal with ROS nav_msgs/Path
         start_pose = PoseStamped()
@@ -168,42 +169,48 @@ class prm_planning:
         goal_pose.pose.orientation = self.goal_o
 
 
-        self.prm_plan.poses.append(start_pose)
-        self.prm_plan.poses.append(goal_pose)
-        
-        print("I have: " + str(len(self.prm_plan.poses)) + " poses in path planned")
+        self.prm_plan.poses.append(start_pose)        
 
-        collided = self.collisionDetect(self.start_x,self.start_y,self.goal_x,self.goal_y)
-        print("Is collision free? " + str(collided))
+        N = 10000
 
-        N = 1000
+        print("TESTING COLLISION DETECTOR")
+        print(self.directPath(0,0,2.808,1.43))
+
+        def node_to_posestamped(node):
+            pose = PoseStamped()
+            pose.pose.position.x = node.x
+            pose.pose.position.y = node.y 
+            return pose
             
         path_found = False
         for counter in range(1,N):
             # choose a random node
             expander_node = self.roadmap[random.randint(0,len(self.roadmap)-1)]
             expanded_coords = self.neighbor_coords(expander_node.x,expander_node.y)
-            if not self.collisionDetect(expander_node.x, expander_node.y, expanded_coords[0], expanded_coords[1]):
+            if self.directPath(expander_node.x, expander_node.y, expanded_coords[0], expanded_coords[1]):
                 my_new_node = PRM_Node(x=expanded_coords[0],y=expanded_coords[1],parent=expander_node,index=counter)
+                self.prm_plan.poses.append(node_to_posestamped(PRM_Node(x=expanded_coords[0],y=expanded_coords[1],parent=expander_node,index=counter)))            
                 self.roadmap.append(my_new_node)
-                if in_endzone(expanded_coords):
+                if self.in_endzone(expanded_coords):
                     path_found = True
+                    print("I found the endzone with "+str(counter)+" nodes.")
                     break
+        if path_found:
+            print("I found a path.")
+        else:
+            print("I haven't found a path.")
+
+        #TODO: append end node...
+            
         
-        def node_to_posestamped(node):
-            pose = PoseStamped()
-            pose.pose.position.x = node.x
-            pose.pose.position.y = node.y 
-            return pose
-        
-        cur_node = self.roadmap[-1]
-        while cur_node != self.start_node:
-            self.prm_plan.poses.append(node_to_posestamped(cur_node))
-            cur_node = cur_node.parent
-        self.prm_plan.poses.append(node_to_posestamped(cur_node))
-        self.prm_plan.poses.reverse()
-        
-        self.pubPlan.publish(self.prm_plan)
+##        cur_node = self.roadmap[-1]
+##        while cur_node != self.start_node:
+##            self.prm_plan.poses.append(node_to_posestamped(cur_node))
+##            cur_node = cur_node.parent
+##        self.prm_plan.poses.append(node_to_posestamped(cur_node))
+##        self.prm_plan.poses.reverse()
+
+        print("I have: " + str(len(self.prm_plan.poses)) + " poses in path planned")
         
         #self.start_node.addChild(my_new_node)
         #my_new_node.addChild(self.goal_node)
@@ -212,15 +219,16 @@ class prm_planning:
 
     #convert position in meter to map grid id, return grid_x, grid_y and their 1d grid_id
     def pos_to_grid(self,poseX,poseY):
-        grid_i = int(round((poseX - self.map.info.origin.position.x) / self.map_res))
-        grid_j = int(round((poseY - self.map.info.origin.position.y) / self.map_res))
+        grid_i = int(round((poseX - self.map.info.origin.position.x) / self.map_res));
+        grid_j = int(round((poseY - self.map.info.origin.position.y) / self.map_res));
 
         grid_id = grid_j * self.map_width + grid_i
 
         return grid_i, grid_j, grid_id
 
+
     #straight line collision detection, all inputs unit are in meter
-    def collisionDetect(self,x1,y1,x2,y2):
+    def directPath(self,x1,y1,x2,y2):
         grid_i1, grid_j1, grid_id1 = self.pos_to_grid(x1, y1)
         grid_i2, grid_j2, grid_id2 = self.pos_to_grid(x2, y2)
 
@@ -231,7 +239,7 @@ class prm_planning:
             # print(self.map.data[line[k][1] * self.map_width + line[k][0]])
 
             #Map value 0 - 100
-            if(self.map.data[line[k][1] * self.map_width + line[k][0]]>100):
+            if(self.map.data[line[k][1] * self.map_width + line[k][0]]>85):
                 return False
 
         return True
