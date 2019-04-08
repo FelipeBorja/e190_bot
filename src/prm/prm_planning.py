@@ -33,7 +33,7 @@ class prm_planning:
         
         # tunables
         self.endzone_radius = 0.2
-        self.node_dist = .5
+        self.node_dist = 1.0
 
         # default start values
         self.start_x = 0
@@ -171,7 +171,7 @@ class prm_planning:
 
         self.prm_plan.poses.append(start_pose)        
 
-        N = 10000
+        N = 1000000
 
         print("TESTING COLLISION DETECTOR")
         print(self.directPath(0,0,2.808,1.43))
@@ -189,7 +189,7 @@ class prm_planning:
             expanded_coords = self.neighbor_coords(expander_node.x,expander_node.y)
             if self.directPath(expander_node.x, expander_node.y, expanded_coords[0], expanded_coords[1]):
                 my_new_node = PRM_Node(x=expanded_coords[0],y=expanded_coords[1],parent=expander_node,index=counter)
-                self.prm_plan.poses.append(node_to_posestamped(PRM_Node(x=expanded_coords[0],y=expanded_coords[1],parent=expander_node,index=counter)))            
+                #self.prm_plan.poses.append(node_to_posestamped(PRM_Node(x=expanded_coords[0],y=expanded_coords[1],parent=expander_node,index=counter)))            
                 self.roadmap.append(my_new_node)
                 if self.in_endzone(expanded_coords):
                     path_found = True
@@ -203,12 +203,12 @@ class prm_planning:
         #TODO: append end node...
             
         
-##        cur_node = self.roadmap[-1]
-##        while cur_node != self.start_node:
-##            self.prm_plan.poses.append(node_to_posestamped(cur_node))
-##            cur_node = cur_node.parent
-##        self.prm_plan.poses.append(node_to_posestamped(cur_node))
-##        self.prm_plan.poses.reverse()
+        cur_node = self.roadmap[-1]
+        while cur_node != self.start_node:
+            self.prm_plan.poses.append(node_to_posestamped(cur_node))
+            cur_node = cur_node.parent
+        self.prm_plan.poses.append(node_to_posestamped(cur_node))
+        self.prm_plan.poses.reverse()
 
         print("I have: " + str(len(self.prm_plan.poses)) + " poses in path planned")
         
@@ -229,6 +229,12 @@ class prm_planning:
 
     #straight line collision detection, all inputs unit are in meter
     def directPath(self,x1,y1,x2,y2):
+        # enforce boundaries TODO KLUDGE
+        if x2<0 or x2>3:
+            return False
+        if y2<0 or y2>3:
+            return False
+
         grid_i1, grid_j1, grid_id1 = self.pos_to_grid(x1, y1)
         grid_i2, grid_j2, grid_id2 = self.pos_to_grid(x2, y2)
 
@@ -238,8 +244,11 @@ class prm_planning:
             # print("Check map gird: " + str(line[k][0]) + " " + str(line[k][1]))
             # print(self.map.data[line[k][1] * self.map_width + line[k][0]])
 
-            #Map value 0 - 100
-            if(self.map.data[line[k][1] * self.map_width + line[k][0]]>85):
+            try:
+                #Map value 0 - 100
+                if(self.map.data[line[k][1] * self.map_width + line[k][0]]>85):
+                    return False
+            except IndexError:
                 return False
 
         return True
