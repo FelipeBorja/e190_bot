@@ -168,9 +168,6 @@ class prm_planning:
 
         goal_pose.pose.orientation = self.goal_o
 
-
-        self.prm_plan.poses.append(start_pose)        
-
         N = 1000000
 
         print("TESTING COLLISION DETECTOR")
@@ -257,7 +254,6 @@ class prm_planning:
 def bresenham(x1, y1, x2, y2):
     """Bresenham's Line Algorithm
     Produces a list of tuples from start and end
-
     >>> points1 = get_line((0, 0), (3, 4))
     >>> points2 = get_line((3, 4), (0, 0))
     >>> assert(set(points1) == set(points2))
