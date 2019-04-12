@@ -168,51 +168,79 @@ class prm_planning:
 
         goal_pose.pose.orientation = self.goal_o
 
-        N = 1000000
-
-        print("TESTING COLLISION DETECTOR")
-        print(self.directPath(0,0,2.808,1.43))
+        N = 5000
 
         def node_to_posestamped(node):
             pose = PoseStamped()
             pose.pose.position.x = node.x
             pose.pose.position.y = node.y 
             return pose
+
+        # definitions according to wiki:
+        # https://en.wikipedia.org/wiki/Rapidly-exploring_random_tree
+        def RAND_CONF():
+            q = (random.uniform(0,3),random.uniform(0,3))
+            #print("random conf: "+str(q))
+            return q
+
+        def NEAREST_VERTEX(q_rand, G):
+            # G is a list, self.roadmap
+            # q_rand is a random point in the conf. space
+            assert(len(G)>0)
+            dmin = float('inf')
+            imin = float('nan')
+            for i in range(len(G)):
+                candidate_node = G[i]
+                d = (q_rand[0]-candidate_node.x)**2 + (q_rand[1]-candidate_node.y)**2
+                if d<dmin:
+                    dmin = d
+                    imin = i
+            #print("nearest index: "+str(imin))
+            #print("nearest node: " + str((G[imin].x,G[imin].y)))
+            return G[imin]
+
+        def NEW_CONF(q_near, q_rand, dq):
+            dx = q_rand[0]-q_near[0]
+            dy = q_rand[1]-q_near[1]
+            theta = math.atan2(dy,dx)
+            return (q_near[0]+dq*math.cos(theta), q_near[1]+dq*math.sin(theta))            
             
         path_found = False
         for counter in range(1,N):
-            # choose a random node
-            expander_node = self.roadmap[random.randint(0,len(self.roadmap)-1)]
-            expanded_coords = self.neighbor_coords(expander_node.x,expander_node.y)
-            if self.directPath(expander_node.x, expander_node.y, expanded_coords[0], expanded_coords[1]):
-                my_new_node = PRM_Node(x=expanded_coords[0],y=expanded_coords[1],parent=expander_node,index=counter)
-                #self.prm_plan.poses.append(node_to_posestamped(PRM_Node(x=expanded_coords[0],y=expanded_coords[1],parent=expander_node,index=counter)))            
-                self.roadmap.append(my_new_node)
-                if self.in_endzone(expanded_coords):
+            # according to wiki:
+            # https://en.wikipedia.org/wiki/Rapidly-exploring_random_tree
+            # q denotes coordinate
+            # N denotes node
+            G = self.roadmap
+            dq = .1 # TODO: TUNE THIS NUMBER HERE!!!
+            q_rand = RAND_CONF()
+            N_near = NEAREST_VERTEX(q_rand, G) # N denotes node
+            q_near = (N_near.x, N_near.y)
+            q_new = NEW_CONF(q_near, q_rand, dq)
+
+            if self.directPath(q_near[0],q_near[1],q_new[0],q_new[1]):
+                G.append(PRM_Node(x=q_new[0],y=q_new[1],parent=N_near,index=counter))
+                if self.in_endzone(q_near):
                     path_found = True
                     print("I found the endzone with "+str(counter)+" nodes.")
                     break
+
         if path_found:
             print("I found a path.")
+
+            cur_node = self.roadmap[-1]
+            while cur_node != self.start_node:
+                self.prm_plan.poses.append(node_to_posestamped(cur_node))
+                cur_node = cur_node.parent
+            self.prm_plan.poses.append(node_to_posestamped(cur_node))
+            self.prm_plan.poses.reverse()
+            
+            print("I have: " + str(len(self.prm_plan.poses)) + " poses in path planned")
         else:
             print("I haven't found a path.")
+            for node in self.roadmap:
+                self.prm_plan.poses.append(node_to_posestamped(node))
 
-        #TODO: append end node...
-            
-        
-        cur_node = self.roadmap[-1]
-        while cur_node != self.start_node:
-            self.prm_plan.poses.append(node_to_posestamped(cur_node))
-            cur_node = cur_node.parent
-        self.prm_plan.poses.append(node_to_posestamped(cur_node))
-        self.prm_plan.poses.reverse()
-
-        print("I have: " + str(len(self.prm_plan.poses)) + " poses in path planned")
-        
-        #self.start_node.addChild(my_new_node)
-        #my_new_node.addChild(self.goal_node)
-
-        #print("The last node's index is: " + str(my_new_node.index))
 
     #convert position in meter to map grid id, return grid_x, grid_y and their 1d grid_id
     def pos_to_grid(self,poseX,poseY):
