@@ -10,4 +10,7 @@
 	<node name="prm_planning" pkg="e190_bot" type="prm_planning.py" output="screen"/>
 
 	<node pkg="rviz" type="rviz" name="rviz" args="$(arg rviz_cfg)"/>
+	<node pkg="e190_bot" name="path_to_point_node" type="path_director.py" output="screen" />
+	<node pkg="e190_bot" type="control.py" name="bot_controller" output="screen"/>
+	<node pkg="e190_bot" type="pcontrol.py" name="pcontrol" output="screen"/>
 </launch>

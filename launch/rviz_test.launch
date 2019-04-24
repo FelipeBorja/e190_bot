@@ -1,0 +1,11 @@
+<launch>
+    <arg name="rviz_cfg" default="-d $(find e190_bot)/params/rviz/rviz_test.rviz" />
+
+    <!-- Make nodes for control.py & square.py -->
+	<node pkg="e190_bot" name="control" type="control.py"/>
+	<node pkg="e190_bot" name="square" type="square.py"/>
+
+	<!-- Make node for rviz -->
+	<node pkg="rviz" type="rviz" name="rviz" args="$(arg rviz_cfg)"/>
+
+</launch>

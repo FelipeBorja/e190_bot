@@ -109,8 +109,8 @@ class botControl:
 
             RPWM =int((CmdVel.linear.x - CmdVel.angular.z * self.bot_radius)/right_alpha)
             LPWM =int((CmdVel.linear.x + CmdVel.angular.z * self.bot_radius)/left_alpha)
-            print(RPWM)
-            print(LPWM)
+            #print(RPWM)
+            #print(LPWM)
 
             # Invert direction so +x is forward
             RDIR = int(RPWM < 0)
@@ -127,7 +127,7 @@ class botControl:
     def odom_pub(self):
         if(self.robot_mode == "HARDWARE_MODE"):
             self.count = self.count + 1
-            print(self.count) # second counter
+            #print(self.count) # second counter
             command = '$S @'
             self.xbee.tx(dest_addr = self.address, data = command)
             try:

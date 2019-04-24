@@ -212,7 +212,7 @@ class prm_planning:
             # q denotes coordinate
             # N denotes node
             G = self.roadmap
-            dq = .1 # TODO: TUNE THIS NUMBER HERE!!!
+            dq = .5 # TODO: TUNE THIS NUMBER HERE!!!
             q_rand = RAND_CONF()
             N_near = NEAREST_VERTEX(q_rand, G) # N denotes node
             q_near = (N_near.x, N_near.y)
