@@ -29,7 +29,7 @@
   <node pkg="e190_bot" name="robot_steering" type="robot_steering.py" output="screen"/>
 
   <arg name="rviz" default="true"/>
-  <arg name="rviz_cfg" default="-d $(find e190_bot)/params/rviz/labs.rviz" />
+  <arg name="rviz_cfg" default="-d $(find e190_bot)/params/rviz/aruco_rviz.rviz" />
   <node if="$(arg rviz)" pkg="rviz" type="rviz" name="rviz" args="$(arg rviz_cfg)"/>
 
 </launch>
