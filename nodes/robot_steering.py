@@ -39,13 +39,13 @@ class robot_steering():
             rot_Euler = tf.transformations.euler_from_quaternion(rot)[2]
 
             # This is a simple linear velocity command
-            self.vel.linear.x = 0.5 * fid_linear + 0.2
+            self.vel.linear.x = 0.5 * fid_linear + 0.3
 
             # This linear velocity command makes:
             # closer tag -> faster speed, farther tag -> slower speed
-            #self.vel.linear.x = 2.10 - 2.5 * fid_linear
+            #self.vel.linear.x = 1.75 - 2.5 * fid_linear
             print(fid_linear)
-            self.vel.angular.z = 1.2 * rot_Euler
+            self.vel.angular.z = 0.8 * rot_Euler
         else:
             self.inactive_timer += 1
             if self.inactive_timer > 5:
